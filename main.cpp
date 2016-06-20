@@ -23,28 +23,30 @@ int set_nonblock(int fd)
 
 int main(int argc, char **argv)
 {
+  unlink(IN_FIFO_NAME);
+  unlink(OUT_FIFO_NAME);
   if((mkfifo(IN_FIFO_NAME, O_RDWR)) == -1)
   {
-    fprintf(stderr, "Невозможно создать fifo\n");
-    exit(0);
+    std::cerr << "Невозможно создать fifo\n";
+    return -1;
   }
   if((mkfifo(OUT_FIFO_NAME, O_RDWR)) == -1)
   {
-    fprintf(stderr, "Невозможно создать fifo\n");
-    exit(0);
+    std::cerr << "Невозможно создать fifo\n";
+    return -1;
   }
 
   int ReadFifo = 0;
-  if (( ReadFifo = open(IN_FIFO_NAME, O_RDONLY))<0)
+  if (( ReadFifo = open(IN_FIFO_NAME, O_RDONLY | O_NONBLOCK))<0)
   {
-    perror("read fifo open");
-    exit(0);
+    std::cerr << "read fifo open\n";
+    return -1;
   }
   int WriteFifo = 0;
   if((WriteFifo = open(OUT_FIFO_NAME, O_WRONLY))<0)
   {
-    perror("write fifo open");
-    exit(0);
+    std::cerr << "write fifo open\n";
+    return -1;
   }
 
   set_nonblock(ReadFifo);
@@ -66,13 +68,13 @@ int main(int argc, char **argv)
       {
         static char Buffer[1024];
         int RecvResult = read(Events[i].data.fd, Buffer, 1024);
-        if((RecvResult == 0) && (errno != EAGAIN))
+        if(RecvResult == 0)
         {
           close(Events[i].data.fd);
         }
         else if(RecvResult > 0)
         {
-          write(Events[i].data.fd, Buffer, 1024);
+          write(WriteFifo, Buffer, 1024);
         }
       }
     }
